@@ -28,8 +28,62 @@ namespace TestConsole
         }
         static void Main(string[] args)
         {
+            ReadCsvNewLdbOrgTree();
         }
 
+        private static void ReadCsvNewLdbOrgTree()
+        {
+            List<LdbItem> newLDBItems = new List<LdbItem>();
+
+            using (StreamReader sr = new StreamReader(@"C:\kpl\newLdb2.csv"))
+            {
+
+                string currentLine;
+                // currentLine will be null when the StreamReader reaches the end of file
+                while ((currentLine = sr.ReadLine()) != null)
+                {
+                    string[] coulumns = currentLine.Split(new char[] { ';' });
+                    LdbItem item = new LdbItem();
+                    item.Duns = CleanInput(coulumns[0]);
+                    item.Name = CleanInput(coulumns[1]);
+                    item.HqDuns = CleanInput(coulumns[2]);
+                    item.HqName = CleanInput(coulumns[3]);
+                    item.GuDuns = CleanInput(coulumns[4]);
+                    item.GuName = CleanInput(coulumns[5]);
+                    newLDBItems.Add(item);
+                }
+            }
+
+            // get GUCs
+
+            List<LdbItem> gucItems = newLDBItems.Where(x => x.GuDuns.Equals(x.Duns)).ToList();
+            List<OrgTreeItem> rootItems = new List<OrgTreeItem>();
+            foreach (LdbItem item in gucItems)
+            {
+                OrgTreeItem orgItem = new OrgTreeItem();
+                orgItem.Duns = item.Duns;
+                orgItem.Name = item.Name;
+                rootItems.Add(orgItem);
+                BuildOrgTree(orgItem, newLDBItems);
+            }
+            foreach (OrgTreeItem item in rootItems.Where(x => x.Items.Count > 0))
+            {
+               
+            }
+        }
+
+        private static void BuildOrgTree(OrgTreeItem item, List<LdbItem> newLDBItems)
+        {
+            List<LdbItem> childItems = newLDBItems.Where(x => !x.GuDuns.Equals(item.Duns) && x.HqDuns.Equals(item.Duns)).ToList();
+            foreach (LdbItem child in childItems)
+            {
+                OrgTreeItem childOrgItem = new OrgTreeItem();
+                childOrgItem.Duns = child.Duns;
+                childOrgItem.Name = child.Name;
+                item.Items.Add(childOrgItem);
+                BuildOrgTree(childOrgItem, newLDBItems);
+            }
+        }
         private static void ReadCsvCommodities()
         {
             using (StreamReader sr = new StreamReader(@"C:\kpl\commodities.csv"))
@@ -400,6 +454,24 @@ namespace TestConsole
             {
                 return string.Empty;
             }
+        }
+
+        private class LdbItem
+        {
+            public string Duns { get; set; }
+            public string Name { get; set; }
+            public string HqDuns { get; set; }
+            public string HqName { get; set; }
+            public string GuDuns { get; set; }
+            public string GuName { get; set; }
+        }
+
+        private class OrgTreeItem
+        {
+            public string Duns { get; set; }
+            public string Name { get; set; }
+
+            public List<OrgTreeItem> Items { get; } = new List<OrgTreeItem>();
         }
     }
 }
