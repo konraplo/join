@@ -4,8 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-
+using System.Web.Script.Serialization;
 namespace TestConsole
 {
 
@@ -68,10 +67,29 @@ namespace TestConsole
             }
             foreach (OrgTreeItem item in rootItems.Where(x => x.Items.Count > 0))
             {
-               
+                PersistOrgTree(item, item);
             }
         }
 
+        private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem)
+        {
+            OrgTreeItem itemClone = (OrgTreeItem)rootItem.Clone();
+            if (item.Duns.Equals(rootItem.Duns))
+            {
+                itemClone.Selected = true;
+            }
+            else
+            {
+                itemClone.Items.FirstOrDefault(x => x.Duns.Equals(item.Duns)).Selected = true;
+            }
+
+            string orgtreeJson = new JavaScriptSerializer().Serialize(itemClone);
+            foreach (OrgTreeItem child in item.Items)
+            {
+                PersistOrgTree(child, rootItem);
+            }
+
+        }
         private static void BuildOrgTree(OrgTreeItem item, List<LdbItem> newLDBItems)
         {
             List<LdbItem> childItems = newLDBItems.Where(x => !x.GuDuns.Equals(item.Duns) && x.HqDuns.Equals(item.Duns)).ToList();
@@ -466,12 +484,19 @@ namespace TestConsole
             public string GuName { get; set; }
         }
 
-        private class OrgTreeItem
+        private class OrgTreeItem: ICloneable
         {
             public string Duns { get; set; }
             public string Name { get; set; }
 
+            public bool Selected { get; set; }
+
             public List<OrgTreeItem> Items { get; } = new List<OrgTreeItem>();
+
+            public object Clone()
+            {
+                return this.MemberwiseClone();
+            }
         }
     }
 }
