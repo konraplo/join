@@ -34,7 +34,7 @@ namespace TestConsole
         {
             List<LdbItem> newLDBItems = new List<LdbItem>();
 
-            using (StreamReader sr = new StreamReader(@"C:\kpl\newLdb2.csv"))
+            using (StreamReader sr = new StreamReader(@"C:\kpl\export3rootCompanyB.csv"))
             {
 
                 string currentLine;
