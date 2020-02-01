@@ -65,9 +65,11 @@ namespace TestConsole
                 rootItems.Add(orgItem);
                 BuildOrgTree(orgItem, newLDBItems);
             }
-            foreach (OrgTreeItem item in rootItems.Where(x => x.Items.Count > 0))
+            foreach (OrgTreeItem item in rootItems)
             {
-                PersistOrgTree(item, item);
+                //PersistOrgTree(item, item);
+                string orgtreeJson = new JavaScriptSerializer().Serialize(item);
+                // update item where gud = item.duns and set varchar
             }
         }
 
@@ -92,7 +94,7 @@ namespace TestConsole
         }
         private static void BuildOrgTree(OrgTreeItem item, List<LdbItem> newLDBItems)
         {
-            List<LdbItem> childItems = newLDBItems.Where(x => !x.GuDuns.Equals(item.Duns) && x.HqDuns.Equals(item.Duns)).ToList();
+            List<LdbItem> childItems = newLDBItems.Where(x => x.HqDuns.Equals(item.Duns) && !x.Duns.Equals(x.GuDuns)).ToList();
             foreach (LdbItem child in childItems)
             {
                 OrgTreeItem childOrgItem = new OrgTreeItem();
