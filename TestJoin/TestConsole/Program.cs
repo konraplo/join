@@ -27,7 +27,74 @@ namespace TestConsole
         }
         static void Main(string[] args)
         {
-            ReadCsvNewLdbOrgTree();
+            //ReadCsvNewLdbOrgTree();
+            CheckProblems();
+        }
+
+        private static void CheckProblems()
+        {
+            List<LdbItem> newLDBItems = new List<LdbItem>();
+
+            using (StreamReader sr = new StreamReader(@"C:\kpl\newLdbFull.csv"))
+            {
+
+                string currentLine;
+                // currentLine will be null when the StreamReader reaches the end of file
+                while ((currentLine = sr.ReadLine()) != null)
+                {
+                    string[] coulumns = currentLine.Split(new char[] { ';' });
+                    LdbItem item = new LdbItem();
+                    item.Duns = CleanInput(coulumns[0]);
+                    item.Name = CleanInput(coulumns[1]);
+                    item.HqDuns = CleanInput(coulumns[2]);
+                    item.HqName = CleanInput(coulumns[3]);
+                    item.GuDuns = CleanInput(coulumns[4]);
+                    item.GuName = CleanInput(coulumns[5]);
+                    newLDBItems.Add(item);
+                }
+            }
+
+            // get GUCs
+
+            List<LdbItem> gucItems = newLDBItems.Where(x => x.GuDuns.Equals(x.Duns)).ToList();
+            List<OrgTreeItem> rootItems = new List<OrgTreeItem>();
+            foreach (LdbItem item in gucItems)
+            {
+                OrgTreeItem orgItem = new OrgTreeItem();
+                orgItem.duns = item.Duns;
+                orgItem.label = item.Name;
+                rootItems.Add(orgItem);
+                BuildOrgTree(orgItem, newLDBItems, orgItem);
+            }
+            foreach (OrgTreeItem item in rootItems.Where(x => x.items.Count > 0))
+            {
+                DisplayWrongItems(item, newLDBItems, item.duns); ;
+                //foreach (OrgTreeItem child in item.items)
+                //{
+                //    LdbItem childItem = newLDBItems.FirstOrDefault(x=> x.duns.Equals(child.duns));
+                //    if (childItem != null && !childItem.GuDuns.Equals(item.duns))
+                //    {
+                //        string wrongItem = $"duns:{childItem.duns}, parent:{childItem.HqDuns}, gud:{childItem.GuDuns}";
+                //        Console.WriteLine(wrongItem);
+                //    }
+
+                //}
+            }
+        }
+
+        private static void DisplayWrongItems(OrgTreeItem item, List<LdbItem> newLDBItems, string gud)
+        {
+            foreach (OrgTreeItem child in item.items)
+            {
+                LdbItem childItem = newLDBItems.FirstOrDefault(x => x.Duns.Equals(child.duns));
+                if (childItem != null && !childItem.GuDuns.Equals(gud))
+                {
+                    string wrongItem = $"root:{gud} duns:{childItem.Duns}, parent:{childItem.HqDuns}, gud:{childItem.GuDuns}";
+                    Console.WriteLine(wrongItem);
+                }
+
+                DisplayWrongItems(child, newLDBItems, gud);
+            }
         }
 
         private static void ReadCsvNewLdbOrgTree()
@@ -60,14 +127,16 @@ namespace TestConsole
             foreach (LdbItem item in gucItems)
             {
                 OrgTreeItem orgItem = new OrgTreeItem();
-                orgItem.Duns = item.Duns;
-                orgItem.Name = item.Name;
+                orgItem.duns = item.Duns;
+                orgItem.label = item.Name;
                 rootItems.Add(orgItem);
-                BuildOrgTree(orgItem, newLDBItems);
+                BuildOrgTree(orgItem, newLDBItems, orgItem);
             }
             foreach (OrgTreeItem item in rootItems)
             {
                 //PersistOrgTree(item, item);
+                item.selected = true;
+                item.expanded = true;
                 string orgtreeJson = new JavaScriptSerializer().Serialize(item);
                 // update item where gud = item.duns and set varchar
             }
@@ -76,33 +145,36 @@ namespace TestConsole
         private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem)
         {
             OrgTreeItem itemClone = (OrgTreeItem)rootItem.Clone();
-            if (item.Duns.Equals(rootItem.Duns))
+            if (item.duns.Equals(rootItem.duns))
             {
-                itemClone.Selected = true;
+                itemClone.selected = true;
             }
             else
             {
-                itemClone.Items.FirstOrDefault(x => x.Duns.Equals(item.Duns)).Selected = true;
+                itemClone.items.FirstOrDefault(x => x.duns.Equals(item.duns)).selected = true;
             }
 
             string orgtreeJson = new JavaScriptSerializer().Serialize(itemClone);
-            foreach (OrgTreeItem child in item.Items)
+            foreach (OrgTreeItem child in item.items)
             {
                 PersistOrgTree(child, rootItem);
             }
 
         }
-        private static void BuildOrgTree(OrgTreeItem item, List<LdbItem> newLDBItems)
+        private static void BuildOrgTree(OrgTreeItem item, List<LdbItem> newLDBItems, OrgTreeItem root)
         {
-            List<LdbItem> childItems = newLDBItems.Where(x => x.HqDuns.Equals(item.Duns) && !x.Duns.Equals(x.GuDuns)).ToList();
+            List<LdbItem> childItems = newLDBItems.Where(x => x.HqDuns.Equals(item.duns) && !x.Duns.Equals(x.GuDuns)).ToList();
             foreach (LdbItem child in childItems)
             {
                 OrgTreeItem childOrgItem = new OrgTreeItem();
-                childOrgItem.Duns = child.Duns;
-                childOrgItem.Name = child.Name;
-                item.Items.Add(childOrgItem);
-                BuildOrgTree(childOrgItem, newLDBItems);
+                childOrgItem.duns = child.Duns;
+                childOrgItem.label = child.Name;
+                item.items.Add(childOrgItem);
+                root.count++;
+                BuildOrgTree(childOrgItem, newLDBItems, root);
+
             }
+
         }
         private static void ReadCsvCommodities()
         {
@@ -488,12 +560,15 @@ namespace TestConsole
 
         private class OrgTreeItem: ICloneable
         {
-            public string Duns { get; set; }
-            public string Name { get; set; }
+            public string duns { get; set; }
+            public string label { get; set; }
 
-            public bool Selected { get; set; }
+            public bool selected { get; set; }
+            public bool expanded { get; set; }
 
-            public List<OrgTreeItem> Items { get; } = new List<OrgTreeItem>();
+            public int count { get; set; }
+
+            public List<OrgTreeItem> items { get; } = new List<OrgTreeItem>();
 
             public object Clone()
             {
