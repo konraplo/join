@@ -28,7 +28,74 @@ namespace TestConsole
         static void Main(string[] args)
         {
             //ReadCsvNewLdbOrgTree();
-            CheckProblems();
+            //CheckProblems();
+            FixOrphans();
+        }
+
+        private static void FixOrphans()
+        {
+            List<LdbItem> newLDBItems = new List<LdbItem>();
+
+            using (StreamReader sr = new StreamReader(@"C:\kpl\newLdbFull.csv"))
+            {
+
+                string currentLine;
+                // currentLine will be null when the StreamReader reaches the end of file
+                while ((currentLine = sr.ReadLine()) != null)
+                {
+                    string[] coulumns = currentLine.Split(new char[] { ';' });
+                    LdbItem item = new LdbItem();
+                    item.Duns = CleanInput(coulumns[0]);
+                    item.Name = CleanInput(coulumns[1]);
+                    item.HqDuns = CleanInput(coulumns[2]);
+                    item.HqName = CleanInput(coulumns[3]);
+                    item.GuDuns = CleanInput(coulumns[4]);
+                    item.GuName = CleanInput(coulumns[5]);
+                    newLDBItems.Add(item);
+                }
+            }
+
+            List<OrgTreeItem> rootItems = new List<OrgTreeItem>();
+            //test orphan
+            LdbItem orphanitem = newLDBItems.FirstOrDefault(x => x.Duns.Equals("31-606-7164"));
+            OrgTreeItem orgItem = new OrgTreeItem();
+            orgItem.duns = orphanitem.Duns;
+            orgItem.label = orphanitem.Name;
+            rootItems.Add(orgItem);
+            List<LdbItem> famillyItems = newLDBItems.Where(x => x.GuDuns.Equals(orgItem.duns)).ToList();
+            List<string> famillyDuns = famillyItems.Select(x => x.Duns).ToList();
+            List<LdbItem> orphanItems = famillyItems.Where(x => !famillyDuns.Contains(x.HqDuns)).ToList();
+            foreach (LdbItem orphan in orphanItems.Where(x => !x.OutOfBusiness).ToList())
+            {
+                orphan.HqDuns = orphan.GuDuns;
+            }
+            BuildOrgTree(orgItem, famillyItems, orgItem);
+
+            // get GUCs
+
+            //List<LdbItem> gucItems = newLDBItems.Where(x => x.GuDuns.Equals(x.Duns)).ToList();
+            //foreach (LdbItem item in gucItems)
+            //{
+            //    OrgTreeItem orgItem = new OrgTreeItem();
+            //    orgItem.duns = item.Duns;
+            //    orgItem.label = item.Name;
+            //    rootItems.Add(orgItem);
+            //    BuildOrgTree(orgItem, newLDBItems.Where(x => x.GuDuns.Equals(orgItem.duns)).ToList(), orgItem);
+            //}
+            foreach (OrgTreeItem item in rootItems.Where(x => x.items.Count > 0))
+            {
+                DisplayWrongItems(item, newLDBItems, item.duns); ;
+                //foreach (OrgTreeItem child in item.items)
+                //{
+                //    LdbItem childItem = newLDBItems.FirstOrDefault(x=> x.duns.Equals(child.duns));
+                //    if (childItem != null && !childItem.GuDuns.Equals(item.duns))
+                //    {
+                //        string wrongItem = $"duns:{childItem.duns}, parent:{childItem.HqDuns}, gud:{childItem.GuDuns}";
+                //        Console.WriteLine(wrongItem);
+                //    }
+
+                //}
+            }
         }
 
         private static void CheckProblems()
@@ -64,7 +131,7 @@ namespace TestConsole
                 orgItem.duns = item.Duns;
                 orgItem.label = item.Name;
                 rootItems.Add(orgItem);
-                BuildOrgTree(orgItem, newLDBItems, orgItem);
+                BuildOrgTree(orgItem, newLDBItems.Where(x => x.GuDuns.Equals(orgItem.duns)).ToList(), orgItem);
             }
             foreach (OrgTreeItem item in rootItems.Where(x => x.items.Count > 0))
             {
@@ -556,6 +623,7 @@ namespace TestConsole
             public string HqName { get; set; }
             public string GuDuns { get; set; }
             public string GuName { get; set; }
+            public bool OutOfBusiness { get; set; }
         }
 
         private class OrgTreeItem: ICloneable
