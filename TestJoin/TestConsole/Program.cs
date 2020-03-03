@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
@@ -27,9 +28,25 @@ namespace TestConsole
         }
         static void Main(string[] args)
         {
-            //ReadCsvNewLdbOrgTree();
+            List<string> test = new List<string>();
+            string t1 = "dupa";
+            if (!test.Contains(t1))
+            {
+                test.Add(t1);
+            }
+            if (!test.Contains(t1))
+            {
+                test.Add(t1);
+            }
+            t1 = "blada";
+            if (!test.Contains(t1))
+            {
+                test.Add(t1);
+            }
+            string t2 = string.Join(";", test.ToArray());
+            ReadCsvNewLdbOrgTree();
             //CheckProblems();
-            FixOrphans();
+            //FixOrphans();
         }
 
         private static void FixOrphans()
@@ -168,7 +185,8 @@ namespace TestConsole
         {
             List<LdbItem> newLDBItems = new List<LdbItem>();
 
-            using (StreamReader sr = new StreamReader(@"C:\kpl\export3rootCompanyB.csv"))
+            //using (StreamReader sr = new StreamReader(@"C:\kpl\export3rootCompanyB.csv"))
+            using (StreamReader sr = new StreamReader(@"D:\kpl\export3rootCompanyB.csv"))
             {
 
                 string currentLine;
@@ -201,10 +219,10 @@ namespace TestConsole
             }
             foreach (OrgTreeItem item in rootItems)
             {
-                //PersistOrgTree(item, item);
-                item.selected = true;
-                item.expanded = true;
-                string orgtreeJson = new JavaScriptSerializer().Serialize(item);
+                PersistOrgTree(item, item);
+                //item.selected = true;
+                //item.expanded = true;
+                //string orgtreeJson = new JavaScriptSerializer().Serialize(item);
                 // update item where gud = item.duns and set varchar
             }
         }
@@ -215,19 +233,56 @@ namespace TestConsole
             if (item.duns.Equals(rootItem.duns))
             {
                 itemClone.selected = true;
+                itemClone.expanded = true;
             }
             else
             {
-                itemClone.items.FirstOrDefault(x => x.duns.Equals(item.duns)).selected = true;
+                OrgTreeItem currentItem = FindItemByDuns(itemClone, item.duns);//itemClone.items.FirstOrDefault(x => x.duns.Equals(item.duns));
+                if (currentItem != null)
+                {
+                    currentItem.selected = true;
+                    currentItem.expanded = true;
+                }
             }
 
             string orgtreeJson = new JavaScriptSerializer().Serialize(itemClone);
+            // update item where sourcestr70 = item.duns and set varchar
             foreach (OrgTreeItem child in item.items)
             {
                 PersistOrgTree(child, rootItem);
             }
-
         }
+
+        private static OrgTreeItem FindItemByDuns(OrgTreeItem item, string duns)
+        {
+            OrgTreeItem currentItem = item.items.FirstOrDefault(x => x.duns.Equals(duns));
+            if (currentItem != null)
+            {
+                return currentItem;
+            }
+            
+            foreach (OrgTreeItem child in item.items)
+            {
+                return FindItemByDuns(child, duns);
+            }
+
+            return null;
+        }
+
+        //private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem)
+        //{
+        //    OrgTreeItem itemClone = (OrgTreeItem)rootItem.Clone();
+        //    item.selected = true;
+        //    item.expanded = true;
+
+        //    string orgtreeJson = new JavaScriptSerializer().Serialize(rootItem);
+        //    // update item where sourcestr70 = item.duns and set varchar
+        //    foreach (OrgTreeItem child in item.items)
+        //    {
+        //        PersistOrgTree(child, itemClone);
+        //    }
+
+        //}
         private static void BuildOrgTree(OrgTreeItem item, List<LdbItem> newLDBItems, OrgTreeItem root)
         {
             List<LdbItem> childItems = newLDBItems.Where(x => x.HqDuns.Equals(item.duns) && !x.Duns.Equals(x.GuDuns)).ToList();
@@ -626,6 +681,7 @@ namespace TestConsole
             public bool OutOfBusiness { get; set; }
         }
 
+        [Serializable]
         private class OrgTreeItem: ICloneable
         {
             public string duns { get; set; }
@@ -640,7 +696,15 @@ namespace TestConsole
 
             public object Clone()
             {
-                return this.MemberwiseClone();
+                using (var ms = new MemoryStream())
+                {
+                    var formatter = new BinaryFormatter();
+                    formatter.Serialize(ms, this);
+                    ms.Position = 0;
+
+                    return (OrgTreeItem)formatter.Deserialize(ms);
+                }
+                //return this.MemberwiseClone();
             }
         }
     }
