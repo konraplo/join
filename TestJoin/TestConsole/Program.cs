@@ -28,22 +28,22 @@ namespace TestConsole
         }
         static void Main(string[] args)
         {
-            List<string> test = new List<string>();
-            string t1 = "dupa";
-            if (!test.Contains(t1))
-            {
-                test.Add(t1);
-            }
-            if (!test.Contains(t1))
-            {
-                test.Add(t1);
-            }
-            t1 = "blada";
-            if (!test.Contains(t1))
-            {
-                test.Add(t1);
-            }
-            string t2 = string.Join(";", test.ToArray());
+            //List<string> test = new List<string>();
+            //string t1 = "dupa";
+            //if (!test.Contains(t1))
+            //{
+            //    test.Add(t1);
+            //}
+            //if (!test.Contains(t1))
+            //{
+            //    test.Add(t1);
+            //}
+            //t1 = "blada";
+            //if (!test.Contains(t1))
+            //{
+            //    test.Add(t1);
+            //}
+            //string t2 = string.Join(";", test.ToArray());
             ReadCsvNewLdbOrgTree();
             //CheckProblems();
             //FixOrphans();
@@ -215,11 +215,13 @@ namespace TestConsole
                 orgItem.duns = item.Duns;
                 orgItem.label = item.Name;
                 rootItems.Add(orgItem);
-                BuildOrgTree(orgItem, newLDBItems, orgItem);
+                List<LdbItem> famillyItems = newLDBItems.Where(x => x.GuDuns.Equals(orgItem.duns)).ToList();
+                BuildOrgTree(orgItem, famillyItems, orgItem);
+                PersistOrgTree(orgItem, orgItem, null);
             }
             foreach (OrgTreeItem item in rootItems)
             {
-                PersistOrgTree(item, item);
+                //PersistOrgTree(item, item);
                 //item.selected = true;
                 //item.expanded = true;
                 //string orgtreeJson = new JavaScriptSerializer().Serialize(item);
@@ -227,47 +229,104 @@ namespace TestConsole
             }
         }
 
-        private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem)
+        private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem, OrgTreeItem parentItem)
         {
-            OrgTreeItem itemClone = (OrgTreeItem)rootItem.Clone();
-            if (item.duns.Equals(rootItem.duns))
-            {
-                itemClone.selected = true;
-                itemClone.expanded = true;
-            }
-            else
-            {
-                OrgTreeItem currentItem = FindItemByDuns(itemClone, item.duns);//itemClone.items.FirstOrDefault(x => x.duns.Equals(item.duns));
-                if (currentItem != null)
-                {
-                    currentItem.selected = true;
-                    currentItem.expanded = true;
-                }
-            }
-
-            string orgtreeJson = new JavaScriptSerializer().Serialize(itemClone);
+            item.selected = true;
+            item.expanded = true;
+            
+            string orgtreeJson = new JavaScriptSerializer().Serialize(rootItem);
             // update item where sourcestr70 = item.duns and set varchar
-            foreach (OrgTreeItem child in item.items)
+            item.selected = false;
+            item.expanded = item.items.Count > 0;
+            if (null != parentItem)
             {
-                PersistOrgTree(child, rootItem);
+                parentItem.expanded = false;
+            }
+         
+            for (int i=0; i< item.items.Count; i++)
+            {
+                Console.WriteLine(i);
+
+                if (item.items.Count == i + 1)
+                {
+                    PersistOrgTree(item.items[i], rootItem, item);
+
+                }
+                else
+                {
+                    PersistOrgTree(item.items[i], rootItem, null);
+
+                }
             }
         }
 
-        private static OrgTreeItem FindItemByDuns(OrgTreeItem item, string duns)
+        //private static OrgTreeItem FindItemByDuns2(OrgTreeItem item, string duns)
+        //{
+        //    OrgTreeItem currentItem = item.items.FirstOrDefault(x => x.duns.Equals(duns));
+        //    if (currentItem != null)
+        //    {
+        //        item.expanded = true;
+        //        return currentItem;
+        //    }
+            
+        //    foreach (OrgTreeItem child in item.items)
+        //    {
+        //        return FindItemByDuns(child, duns);
+        //    }
+
+        //    return null;
+        //}
+
+        private static void FindItemByDuns3(OrgTreeItem item, string duns, OrgTreeItem result)
         {
             OrgTreeItem currentItem = item.items.FirstOrDefault(x => x.duns.Equals(duns));
             if (currentItem != null)
             {
-                return currentItem;
+                item.expanded = true;
+                result = currentItem;
             }
-            
+            else {
+                foreach (OrgTreeItem child in item.items)
+                {
+                    FindItemByDuns(child, duns, result);
+                }
+            }
+
+        }
+
+        private static OrgTreeItem FindItemByDuns(OrgTreeItem item, string duns, OrgTreeItem result)
+        {
+            //Console.WriteLine(item.duns);
+            if (item.duns.Equals(duns))
+            {
+                return item;
+            }
+
             foreach (OrgTreeItem child in item.items)
             {
-                return FindItemByDuns(child, duns);
+                
+
+                return FindItemByDuns(child, duns, result);
             }
 
             return null;
         }
+
+        //private void ExpandPath(OrgTreeItem item)
+        //{
+        //    item.expanded = true;
+        //    if (!item.duns.Equals(item.parentDuns))
+        //    {
+        //        return currentItem;
+        //    }
+
+        //    foreach (OrgTreeItem child in item.items)
+        //    {
+        //        return FindItemByDuns(child, duns);
+        //    }
+
+        //    return null;
+        //}
 
         //private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem)
         //{
@@ -685,6 +744,7 @@ namespace TestConsole
         private class OrgTreeItem: ICloneable
         {
             public string duns { get; set; }
+
             public string label { get; set; }
 
             public bool selected { get; set; }
