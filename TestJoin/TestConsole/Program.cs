@@ -186,7 +186,8 @@ namespace TestConsole
             List<LdbItem> newLDBItems = new List<LdbItem>();
 
             //using (StreamReader sr = new StreamReader(@"C:\kpl\export3rootCompanyB.csv"))
-            using (StreamReader sr = new StreamReader(@"D:\kpl\export3rootCompanyB.csv"))
+            //using (StreamReader sr = new StreamReader(@"D:\kpl\export3rootCompanyB.csv"))
+            using (StreamReader sr = new StreamReader(@"D:\kpl\export3rootCompanyB - Copy.csv"))
             {
 
                 string currentLine;
@@ -217,7 +218,9 @@ namespace TestConsole
                 rootItems.Add(orgItem);
                 List<LdbItem> famillyItems = newLDBItems.Where(x => x.GuDuns.Equals(orgItem.duns)).ToList();
                 BuildOrgTree(orgItem, famillyItems, orgItem);
-                PersistOrgTree(orgItem, orgItem, null);
+                List<OrgTreeItem> path = new List<OrgTreeItem>();
+                path.Add(orgItem);
+                PersistOrgTree(orgItem, orgItem, path);
             }
             foreach (OrgTreeItem item in rootItems)
             {
@@ -229,7 +232,7 @@ namespace TestConsole
             }
         }
 
-        private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem, OrgTreeItem parentItem)
+        private static void PersistOrgTree(OrgTreeItem item, OrgTreeItem rootItem, List<OrgTreeItem> pathItems)
         {
             item.selected = true;
             item.expanded = true;
@@ -238,25 +241,45 @@ namespace TestConsole
             // update item where sourcestr70 = item.duns and set varchar
             item.selected = false;
             item.expanded = item.items.Count > 0;
-            if (null != parentItem)
+            //if (null != parentItem && item.items.Count == 0)
+            if (item.items.Count == 0)
             {
-                parentItem.expanded = false;
+                for (int i = pathItems.Count - 1; i > 0; i--)
+                {
+                    OrgTreeItem checkItem = pathItems[i];
+                    OrgTreeItem parentItem = pathItems[i-1];
+                    if (parentItem.items.Last().duns.Equals(checkItem.duns))
+                    {
+                        parentItem.expanded = false;
+                        pathItems.RemoveAt(i);
+
+                    }
+                    else
+                    {
+                        pathItems.RemoveAt(i);
+                        break;
+                    }
+                }
+
+                //pathItems.Clear();
             }
-         
+
             for (int i=0; i< item.items.Count; i++)
             {
                 Console.WriteLine(i);
+                pathItems.Add(item.items[i]);
+                PersistOrgTree(item.items[i], rootItem, pathItems);
 
-                if (item.items.Count == i + 1)
-                {
-                    PersistOrgTree(item.items[i], rootItem, item);
+                //if (item.items.Count == i)
+                //{
+                //    PersistOrgTree(item.items[i], rootItem, pathItems);
 
-                }
-                else
-                {
-                    PersistOrgTree(item.items[i], rootItem, null);
+                //}
+                //else
+                //{
+                //    PersistOrgTree(item.items[i], rootItem, pathItems);
 
-                }
+                //}
             }
         }
 
