@@ -54,6 +54,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="TestData\export3rootCompanyB.csv" />
+    <None Include="TestData\exportFriedeSpringer.csv" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -187,7 +187,7 @@ namespace TestConsole
 
             //using (StreamReader sr = new StreamReader(@"C:\kpl\export3rootCompanyB.csv"))
             //using (StreamReader sr = new StreamReader(@"D:\kpl\export3rootCompanyB.csv"))
-            using (StreamReader sr = new StreamReader(@"D:\kpl\export3rootCompanyB - Copy.csv"))
+            using (StreamReader sr = new StreamReader(@"D:\kpl\exportFriedeSpringer.csv"))
             {
 
                 string currentLine;
