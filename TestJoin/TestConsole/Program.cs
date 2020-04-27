@@ -20,6 +20,17 @@ namespace TestConsole
         private const string BP = "Powertrain[de]Antriebswelle[es]Tren motriz[pl]Powertrain[ru]Силовой агрегат[zh]动力总成[fr]Groupe motopropulseur[it]Powertrain[pt]Powertrain";
         private const string BX = "Exterior[de]Exterieur[es]exterior[pl]powierzchowność[ru]экстерьер[zh]外观[fr]extérieur[it]esterno[pt]exterior";
 
+        private const string A = "Procurement General[de]Allgemeiner Einkauf";
+        private const string C = "Connectivity, eMobility&Fahrerassistenz[de]Connectivity, eMobility&Fahrerassistenz";
+        private const string E = "Electric[de]Elektrik";
+        private const string I = "Interior[de]Interieur";
+        private const string L = "HV Batterie[de]HV Battery";
+        private const string M = "Metal[de]Metall";
+        private const string N = "New Product Launches[de]Neue Produktanlaeufe";
+        private const string P = "Powertrain[de]Powertrain";
+        private const string S = "Services[de]Services";
+        private const string X = "Exterior[de]Exterieur";
+
         private static class SineqaEventType
         {
             public const string SearchText = "search.text";
@@ -44,7 +55,9 @@ namespace TestConsole
             //    test.Add(t1);
             //}
             //string t2 = string.Join(";", test.ToArray());
-            ReadCsvNewLdbOrgTree();
+
+            ReadCsvCommodities2();
+            //ReadCsvNewLdbOrgTree();
             //CheckProblems();
             //FixOrphans();
         }
@@ -380,6 +393,7 @@ namespace TestConsole
             }
 
         }
+
         private static void ReadCsvCommodities()
         {
             using (StreamReader sr = new StreamReader(@"C:\kpl\commodities.csv"))
@@ -459,6 +473,83 @@ namespace TestConsole
                 File.WriteAllText(@"C:\kpl\commoditiesFile.txt", sb.ToString());
             }
         }
+
+
+        private static void ReadCsvCommodities2()
+        {
+            using (StreamReader sr = new StreamReader(@"TestData\commodities20200427.csv"))
+            {
+                Regex regex = new Regex(@"\d{4}");
+                string currentLine;
+                Dictionary<string, Comm> values = new Dictionary<string, Comm>();
+                Dictionary<string, string> commodities = new Dictionary<string, string>();
+                commodities.Add("A", A);
+                commodities.Add("C", C);
+                commodities.Add("E", E);
+                commodities.Add("I", I);
+                commodities.Add("L", L);
+                commodities.Add("M", M);
+                commodities.Add("N", N);
+                commodities.Add("P", P);
+                commodities.Add("S", S);
+                commodities.Add("X", X);
+                // currentLine will be null when the StreamReader reaches the end of file
+                while ((currentLine = sr.ReadLine()) != null)
+                {
+                    string[] coulumns = currentLine.Split(new char[] { ';' });
+                    Match match = regex.Match(coulumns[0]);
+                    if (match.Success)
+                    {
+                        string commValue = coulumns[1];
+                        if (!commodities.ContainsKey(commValue))
+                        {
+                            continue;
+                        }
+
+
+                        string id = match.Value;
+                        Comm comm;
+                        if (values.ContainsKey(id))
+                        {
+                            comm = values[id];
+                        }
+                        else
+                        {
+                            comm = new Comm();
+                            values.Add(id, comm);
+                        }
+
+                        comm.Id = id;
+                        comm.Translation = commodities[commValue];
+                       
+                    }
+                }
+
+                StringBuilder sb = new StringBuilder();
+                foreach (Comm item in values.Values)
+                {
+                    //if (string.IsNullOrEmpty(item.Us))
+                    //{
+                    //    continue;
+                    //}
+
+                    string commodityLine = string.Empty;
+                    //if (string.IsNullOrEmpty(item.De)) {
+                    // commodityLine = string.Format("{0};{1}", item.Us, item.Id);
+                    //}
+                    //else
+                    //{
+                    //    commodityLine = string.Format("{0}[de]{1};{2}", item.Us, item.De, item.Id);
+                    //}
+                    commodityLine = string.Format("{0};{1}", item.Translation, item.Id);
+
+                    sb.AppendLine(commodityLine);
+                }
+
+                File.WriteAllText(@"TestData\commoditiesFile.txt", sb.ToString());
+            }
+        }
+
 
 
         private static void CheckCsvCommodities()
